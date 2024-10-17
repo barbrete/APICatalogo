@@ -1,7 +1,5 @@
 ﻿using APICatalogo.Context;
 using APICatalogo.Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,9 +17,9 @@ namespace APICatalogo.Controllers
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<Produto>> Get() // ActionResult == Executa a operação de resultado do método de ação de forma assíncrona.
+        public async Task<ActionResult<IEnumerable<Produto>>> Get()
         {
-            var produtos = _context.Produtos.ToList();
+            var produtos = await _context.Produtos.AsNoTracking().ToListAsync();
 
             if (produtos is null)
             {
@@ -31,15 +29,15 @@ namespace APICatalogo.Controllers
 
         }
 
-        [HttpGet("{id:int}", Name="ObterProduto")]
-        public ActionResult<Produto> Get(int id)
+        [HttpGet("{id}", Name="ObterProduto")]
+        public async Task<ActionResult<Produto>> Get(int id)
         {
-            var produto = _context.Produtos.FirstOrDefault(p => p.ProdutoId == id); //está indo na tabela produtos e vai pegar o primeiro
-                                                                                    //elemento que cumpra a regra definida entre parenteses,
-                                                                                    //onde o id do produto tem que ser igual a do id enviado
+            var produto = await _context.Produtos.AsNoTracking().FirstOrDefaultAsync(p => p.ProdutoId == id); //está indo na tabela produtos e vai pegar o primeiro
+                                                                                                   //elemento que cumpra a regra definida entre parenteses,
+                                                                                                   //onde o id do produto tem que ser igual a do id enviado
             if(produto is null)
             {
-                return NotFound(value: "Produtos não encontrados");
+                return NotFound(value: "Produto não encontrado");
             }
             return produto;
         }
@@ -55,12 +53,9 @@ namespace APICatalogo.Controllers
             _context.Produtos.Add(produto); //ele adiciona o novo produto digitado no body do request
             _context.SaveChanges(); //e persiste as alterações
 
-            return new CreatedAtRouteResult("ObterProduto", new { id = produto.ProdutoId }, produto);
-            //ele aciona essa rota, para enviar o novo produto para
-            //a rota get. Para que assim, se a rota get for
-            //chamada denovo ela mostre o produto atualizado
-
-
+            return new CreatedAtRouteResult("ObterProduto",
+                new { id = produto.ProdutoId }, produto);
+        
         }
 
         [HttpPut("{id:int}")]//parametro para identificar o id que deve ser alterado

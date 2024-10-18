@@ -1,5 +1,6 @@
 ﻿using APICatalogo.Context;
 using APICatalogo.Models;
+using APICatalogo.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,49 +10,45 @@ namespace APICatalogo.Controllers
     [ApiController]
     public class ProdutosController : ControllerBase
     {
-        private readonly AppDbContext _context;
-
-        public ProdutosController(AppDbContext context)
+        private readonly IProdutoRepository _repository;
+        public ProdutosController(IProdutoRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Produto>>> Get()
+        public ActionResult<IEnumerable<Produto>> Get()
         {
-            var produtos = await _context.Produtos.AsNoTracking().ToListAsync();
-
+            var produtos = _repository.GetProdutos().ToList();
             if (produtos is null)
             {
-                return NotFound("Produtos não encontrados");
+                return NotFound();
             }
-            return produtos;
-
+            return Ok(produtos);
         }
 
         [HttpGet("{id}", Name="ObterProduto")]
-        public async Task<ActionResult<Produto>> Get(int id)
+        public ActionResult<Produto> Get(int id)
         {
-            var produto = await _context.Produtos.AsNoTracking().FirstOrDefaultAsync(p => p.ProdutoId == id); //está indo na tabela produtos e vai pegar o primeiro
-                                                                                                   //elemento que cumpra a regra definida entre parenteses,
-                                                                                                   //onde o id do produto tem que ser igual a do id enviado
-            if(produto is null)
+            var produtos = _repository.GetProduto(id);
+            if (produtos is null)
             {
-                return NotFound(value: "Produto não encontrado");
+                return BadRequest();
             }
-            return produto;
+            return Ok(produtos);
         }
 
         [HttpPost]
         public ActionResult Post(Produto produto) //está recebendo um produto para a criação
         {
-            if (produto is null)
+            var produtos = _repository.Create(produto);
+
+            if (produtos is null)
             {
                 return BadRequest();
             }
 
-            _context.Produtos.Add(produto); //ele adiciona o novo produto digitado no body do request
-            _context.SaveChanges(); //e persiste as alterações
+            
 
             return new CreatedAtRouteResult("ObterProduto",
                 new { id = produto.ProdutoId }, produto);
@@ -61,15 +58,13 @@ namespace APICatalogo.Controllers
         [HttpPut("{id:int}")]//parametro para identificar o id que deve ser alterado
         public ActionResult Put(int id, Produto produto) //envia o id e o body do produto para fazer a atualização
         {
-            if(id != produto.ProdutoId)
+            var produtoAtualizado = _repository.Update(produto);
+            if(id != produtoAtualizado.ProdutoId)
             {
                 return BadRequest();
             }
 
-            _context.Entry(produto).State = EntityState.Modified;
-            _context.SaveChanges();
-
-            return Ok(produto);
+            return Ok(produtoAtualizado);
         }
 
         [HttpDelete("{id:int}")]//parametro para identificar o id que deve ser alterado

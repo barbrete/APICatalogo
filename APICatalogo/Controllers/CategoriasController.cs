@@ -1,6 +1,7 @@
 ﻿using APICatalogo.Context;
 using APICatalogo.Filters;
 using APICatalogo.Models;
+using APICatalogo.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,27 +11,27 @@ namespace APICatalogo.Controllers
     [ApiController]
     public class CategoriasController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly ICategoriaRepository _repository;
         private readonly ILogger<CategoriasController> _logger;
 
-        public CategoriasController(AppDbContext context, ILogger<CategoriasController> logger) // construtor
+        public CategoriasController(ICategoriaRepository repository, ILogger<CategoriasController> logger) // construtor
         {
-            _context = context;
+            _repository = repository;
             _logger = logger;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Categoria>>> Get()
+        public  ActionResult<IEnumerable<Categoria>> Get()
         {
-            return await _context.Categorias.AsNoTracking().ToListAsync();
+            var categorias = _repository.GetCategorias();
+            return Ok(categorias);
         }
 
         [HttpGet("{id:int}", Name = "ObterCategoria")]
         public ActionResult<Categoria> Get(int id)
         {
-            var categoria = _context.Categorias.FirstOrDefault(p => p.Id == id);
-
-            _logger.LogInformation($"=====================GET api/categorias/id = {id}==================");
+            var categoria = _repository.GetCategoria(id);
+           _logger.LogInformation($"=====================GET api/categorias/id = {id}==================");
 
             if (categoria == null)
             {
@@ -46,17 +47,16 @@ namespace APICatalogo.Controllers
         {
             _logger.LogInformation("=====================POST /categorias==================");
 
-            if (categoria is null)
+            if (categoria == null)
             {
-                _logger.LogWarning($"Dados inválidos...");
-                return BadRequest();
+                _logger.LogWarning("Dados inválidos...");
+                return BadRequest("Dados inválidos");
             }
 
-            _context.Categorias.Add(categoria);
-            _context.SaveChanges();
+            var categoriaCriada = _repository.Create(categoria);
 
             return new CreatedAtRouteResult("ObterCategoria",
-                new { id = categoria.Id }, categoria);
+                new { id = categoriaCriada.Id }, categoriaCriada);
 
         }
 
@@ -71,9 +71,7 @@ namespace APICatalogo.Controllers
                 return BadRequest("Dados inválidos");
             }
 
-            _context.Entry(categoria).State = EntityState.Modified;
-            _context.SaveChanges();
-
+            _repository.Update(categoria);
             return Ok(categoria);
         }
 
@@ -82,16 +80,16 @@ namespace APICatalogo.Controllers
         {
             _logger.LogInformation("=====================DELETE Categorias/id==================");
 
-            var categoria = _context.Categorias.FirstOrDefault(p => p.Id == id);
+            var categoria = _repository.GetCategoria(id);
 
             if (categoria is null)
             {
                 return NotFound("Categoria não encontrada");
             }
-            _context.Categorias.Remove(categoria);
-            _context.SaveChanges();
 
-            return Ok(categoria);
+            var categoriaDeletada = _repository.Delete(id);
+
+            return Ok(categoriaDeletada);
         }
     }
 }

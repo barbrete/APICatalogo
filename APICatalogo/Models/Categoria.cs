@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace APICatalogo.Models
 {
@@ -25,8 +26,9 @@ namespace APICatalogo.Models
 
         [Required]
         [StringLength(300)]
-        public string? ImagemUrl { get; set; } 
+        public string? ImagemUrl { get; set; }
 
+        [JsonIgnore]//para não ficar mostrando as informações de produto quando for cadastrar uma categoria no HttpPost/HttpPut do swagger
         public ICollection<Produto> Produtos { get; set; }
 
     }

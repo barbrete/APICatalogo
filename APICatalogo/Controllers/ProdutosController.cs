@@ -10,16 +10,29 @@ namespace APICatalogo.Controllers
     [ApiController]
     public class ProdutosController : ControllerBase
     {
-        private readonly IProdutoRepository _repository;
-        public ProdutosController(IProdutoRepository repository)
+        private readonly IProdutoRepository _produtoRepository;
+        private readonly IRepository<Produto> _repository;
+        public ProdutosController(IRepository<Produto> repository, IProdutoRepository produtoRepository)
         {
+            _produtoRepository = produtoRepository;
             _repository = repository;
+        }
+
+        [HttpGet]
+        public ActionResult<IEnumerable<Produto>> GetProdutosCategorias(int id)
+        {
+            var produtos = _produtoRepository.GetProdutosPorCategoria;
+            if (produtos is null)
+            {
+                return NotFound();
+            }
+            return Ok(produtos);
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<Produto>> Get()
         {
-            var produtos = _repository.GetProdutos().ToList();
+            var produtos = _repository.GetAll().ToList();
             if (produtos is null)
             {
                 return NotFound();
@@ -30,7 +43,7 @@ namespace APICatalogo.Controllers
         [HttpGet("{id}", Name="ObterProduto")]
         public ActionResult<Produto> Get(int id)
         {
-            var produtos = _repository.GetProduto(id);
+            var produtos = _repository.GetId(c => c.ProdutoId == id);
             if (produtos is null)
             {
                 return BadRequest();
@@ -41,45 +54,39 @@ namespace APICatalogo.Controllers
         [HttpPost]
         public ActionResult Post(Produto produto) //está recebendo um produto para a criação
         {
-            var produtos = _repository.Create(produto);
-
-            if (produtos is null)
+            if (produto is null)
             {
                 return BadRequest();
             }
 
-            
+            var novoProduto = _repository.Create(produto);
 
             return new CreatedAtRouteResult("ObterProduto",
-                new { id = produto.ProdutoId }, produto);
+                new { id = novoProduto.ProdutoId }, produto);
         
         }
 
         [HttpPut("{id:int}")]//parametro para identificar o id que deve ser alterado
         public ActionResult Put(int id, Produto produto) //envia o id e o body do produto para fazer a atualização
         {
-            var produtoAtualizado = _repository.Update(produto);
-            if(id != produtoAtualizado.ProdutoId)
+            if (id != produto.ProdutoId)
             {
                 return BadRequest();
             }
-
-            return Ok(produtoAtualizado);
+            var produtoAtualizado = _repository.Update(produto);
+            return Ok(produtoAtualizado);   
         }
 
         [HttpDelete("{id:int}")]//parametro para identificar o id que deve ser alterado
         public ActionResult Delete(int id) 
         {
-            var produto = _context.Produtos.FirstOrDefault(p => p.ProdutoId == id);  
-            
-            if (produto is null)
+            var produto = _repository.GetId(p => p.ProdutoId == id);
+            if (produto == null)
             {
-                return NotFound("Produto não encontrados");
+                return NotFound("Produto não encontrado...");
             }
-            _context.Produtos.Remove(produto);
-            _context.SaveChanges();
-
-            return Ok(produto);
+            var produtoDeletado = _repository.Delete(produto);
+            return Ok(produtoDeletado);
         }
 
     }
